@@ -14,11 +14,11 @@ AudioConnection patchCord0(goutte,0,out,0);
 AudioConnection patchCord1(goutte,0,out,1);
 
 void setup() {
-  Serial.begin(9600);
   AudioMemory(2);
   audioShield.enable();
   audioShield.volume(0.5);
-  goutte.setParamValue("freqgoutte",1);
+  goutte.setParamValue("gate",1);
+
   
 }
 
@@ -26,13 +26,13 @@ void loop() {
   int sensorValue = analogRead(A0);
   //float frequencygoutte = (sensorValue/1024.0)*9 + 1  ; 
   //goutte.setParamValue("freqGoutte",frequencygoutte);
-  if ((millis()- changedrop)> wait) {
+  if ((millis()- changedrop)> wait*1000) {
     goutte.setParamValue("gate",1);
+    delay(25);
     goutte.setParamValue("gate",0);
+    delay(25);
     changedrop= millis();
-    wait= 0.5 + random(0,sensorValue/1024.0);
-    Serial.println(sensorValue);
-    delay(100);
+    wait= 0.5 + random(0,sensorValue)/1024.0;
   }
   
   if ((millis()- change)> periode) {
