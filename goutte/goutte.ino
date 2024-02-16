@@ -17,8 +17,7 @@ void setup() {
   AudioMemory(2);
   audioShield.enable();
   audioShield.volume(0.5);
-  goutte.setParamValue("gate",1);
-
+  
   
 }
 

@@ -7,19 +7,19 @@ import("stdfaust.lib");
         sigma = eta * damp;
         eta = 0.075;
         time = 0 : (select2(trig>trig'):+(1)) ~ _ : ba.samp2sec;
+    };*/
+
+
+myDrop(f0,trig) = os.osc(f) * (exp(-damp*time) : si.smooth(0.99))
+    with {
+        damp = 0.043*f0 + 0.0014*f0^(3/2);
+        f = f0*(1+sigma*time);
+        sigma = eta * damp;
+        eta = 0.075;
+        time = 0 : (select2(trig>trig'):+(1)) ~ _ : ba.samp2sec;
     };
 
-fgoutte = hslider("freqgoutte",1,1,10,1);
-samGoutte = (1/fgoutte)*48000;
 
-rain(density,level) = no.multinoise(1) : par(i, 1, drop) : par(i, 1, *(level))
-    with {
-        drop = _ <: @(1), (abs < density) : * ;
-    }; 
-
-goutte =  ba.pulsen(0.1*48000,samGoutte) : myDrop(hslider("pitch",200,200,2000,1)) <:  dm.freeverb_demo  ;
-
-*/
 
 rainIntensity = hslider("rainIntensity",1,0,1,0.001 );
 
@@ -51,11 +51,6 @@ lowBoil = no.pink_noise : vocoder(20,0.001,0.001,0.5,no.pink_noise) : lowRndFilt
 
 base = no.pink_noise: fi.lowpass(3,4000 + 6000*rainIntensity)*0.5 ;
 
-process = (base + boil + lowBoil) * (rainIntensity*0.5+0.5)   <: _,_;
- 
+drop_control = button("gate") : myDrop(hslider("freqDrop",600,400,800,1)) : re.jcrev :> (_,_) ;
 
-
-
-
-
-
+process = (base + boil + lowBoil :* (rainIntensity*0.5+0.5)   <: (_,_)), drop_control :>  _,_ ;
