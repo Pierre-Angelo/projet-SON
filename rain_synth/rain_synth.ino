@@ -1,12 +1,12 @@
 #include <Audio.h>
-#include "rain.h"
+#include "my_rain.h"
 
 float periode=500;
 float change=0;
 float wait =1;
 float changedrop = 0;
 
-rain rain;
+my_rain rain;
 AudioOutputI2S out;
 AudioControlSGTL5000 audioShield;
 AudioConnection patchCord0(rain,0,out,0);
@@ -20,8 +20,6 @@ void setup() {
   audioShield.volume(0.5);
   rain.setParamValue("rainIntensity",0);
   rain.setParamValue("volumeGoutte",0);
-
-
 }
 
 void loop() {
@@ -29,24 +27,21 @@ void loop() {
   int sensorValue2= analogRead(A0);
   float rainIntensity= (sensorValue2/1024.0);
   rain.setParamValue("rainIntensity",rainIntensity);
-  //float frequencygoutte = (sensorValue/1024.0)*9 + 1  ; 
-  //goutte.setParamValue("freqGoutte",frequencygoutte);
-  if ((millis()- changedrop)> wait*1000) {
+  if ((millis()- changedrop)> wait) {
     rain.setParamValue("gate",1);
     delay(25);
     rain.setParamValue("gate",0);
-    delay(25);
     changedrop= millis();
-    wait=  random(300,1000)/1000.0;
+    wait = random(500,600 + 3000*(1-rainIntensity));//
   }
   
   if ((millis()- change)> periode) {
     rain.setParamValue("volumeGoutte",random(5,10)/10.0);
-    rain.setParamValue("freqDrop",random(400,1000));
-    rain.setParamValue("output1",random(0,10)/10.0);
-    rain.setParamValue("output2",random(0,10)/10.0);
-
-
+    rain.setParamValue("freqDrop",random(400,600 ));
+    float stereoDrop = random(0,100)/100.0;
+    rain.setParamValue("output1",stereoDrop);
+    rain.setParamValue("output2",1-stereoDrop);
+    
     change= millis();
   }
   

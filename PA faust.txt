@@ -1,29 +1,20 @@
 import("stdfaust.lib");
 
-/*myDrop(f0,trig) = os.osc(f *0.5 + f*en.asr(0.02,1,0.05,trig)) * en.asr(0.02,1,0.008,trig) 
+myDrop(f0,trig) = os.osc(f) * (exp(-damp*time) : si.smooth(0.99)) : ef.echo(0.08,0.05,0.05),
+                  os.osc(f-50)*(exp(-damp2*(time- 0.0001)) : si.smooth(0.99)) : + : fi.lowpass(3,f0 +50)
     with {
-        damp = 0.043*f0 + 0.0014*f0^(3/2);
+        damp = 0.005*f0 + 0.005*f0^(3/2);
+        damp2 = 1*f0 + 1*f0^(3/2);
+        
         f = f0*(1+sigma*time);
         sigma = eta * damp;
-        eta = 0.075;
-        time = 0 : (select2(trig>trig'):+(1)) ~ _ : ba.samp2sec;
-    };*/
-
-
-myDrop(f0,trig) = hslider("volumeGoutte",3,0,10,1)* os.osc(f) * (exp(-damp*time) : si.smooth(0.99))
-    with {
-        damp = 0.043*f0 + 0.0014*f0^(3/2);
-        f = f0*(1+sigma*time);
-        sigma = eta * damp;
-        eta = 0.075;
+        eta = 1;
         time = 0 : (select2(trig>trig'):+(1)) ~ _ : ba.samp2sec;
     };
 
-
-
 rainIntensity = hslider("rainIntensity",1,0,1,0.001 );
 
-freqGain = (1/(60 *rainIntensity))*48000;
+freqGain = (1/(60 *rainIntensity + 2))*48000;
 
 inverse = _,_ <: !,_,_,!;
 sel =_,_,_:inverse,_ :select2;
@@ -37,7 +28,7 @@ rndFilter = fi.lowpass(3,500 + 4000 *rainIntensity + pow(2,rainIntensity*11) + a
 lowRndFilter = fi.lowpass(3,500 + 4000 *rainIntensity + pow(2,rainIntensity*11) + abs(no.noise)*100 *rainIntensity) : fi.highpass(3,500) ;
 
 oneVocoderBand(band,bandsNumb,bwRatio,bandGain,x) = x : fi.resonbp(bandFreq,bandQ,bandGain) with {
-        bandFreq = 200+pow(2,(band+1)*0.5);
+        bandFreq = 200+pow(2,(band+1)*0.3);
         BW = (bandFreq - 80+pow(2,(band+1)*0.5))*bwRatio;
         bandQ = bandFreq/BW;
 };
@@ -45,12 +36,14 @@ oneVocoderBand(band,bandsNumb,bwRatio,bandGain,x) = x : fi.resonbp(bandFreq,band
 vocoder(nBands,att,rel,BWRatio,source,excitation) = source <: par(i,nBands,oneVocoderBand(i,nBands,BWRatio,1) :
 	an.amp_follower_ar(att,rel) : _,excitation : oneVocoderBand(i,nBands,BWRatio)) :> _ ;
 
-boil = varNoise : vocoder(23,0.001,0.001,0.5,no.noise) : rndFilter *0.6 ;
+boil = varNoise : vocoder(30,0.001,0.001,0.5,no.noise) : rndFilter *0.6 ;
 
-lowBoil = no.pink_noise : vocoder(20,0.001,0.001,0.5,no.pink_noise) : lowRndFilter *0.5;
+lowBoil = no.pink_noise : vocoder(23,0.001,0.001,0.5,no.pink_noise) : lowRndFilter *0.5;
 
-base = no.pink_noise: fi.lowpass(3,4000 + 6000*rainIntensity)*0.5 ;
+base = no.pink_noise: fi.lowpass(3,4000 + 6000*rainIntensity)*0.5 * rainIntensity;
 
-drop_control = button("gate") : myDrop(hslider("freqDrop",600,400,800,1)) : re.jcrev :> (_*hslider("output1",1,0,10,1),_*hslider("output2",1,0,10,1)) ;
+drop_control = button("gate") : myDrop(hslider("freqDrop",600,400,800,1))*(0.05 + rainIntensity*0.4) <: (_*hslider("output1",1,0,1,0.01),_*hslider("output2",1,0,1,0.01)) ;
 
-process = (base + boil + lowBoil :* (rainIntensity*0.5+0.5)   <: (_,_)), drop_control :>  _,_ ;
+//process = (base + boil + lowBoil :* (rainIntensity*0.5+0.5)   <: (_,_)), drop_control  :>  _,_ ;
+
+process = drop_control;
