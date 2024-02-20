@@ -1,6 +1,5 @@
 import("stdfaust.lib");
 
-
 rainIntensity = hslider("rainIntensity",1,0,1,0.001 );
 
 myDrop(f0,trig) = os.osc(f) * (exp(-damp*time) : si.smooth(0.99)) : ef.echo(0.08,0.1,0.05),
@@ -17,26 +16,27 @@ myDrop(f0,trig) = os.osc(f) * (exp(-damp*time) : si.smooth(0.99)) : ef.echo(0.08
 
 drop_control = button("gate") : myDrop(hslider("freqDrop",600,400,800,1))*(0.05 + rainIntensity*0.4) <: (_*hslider("output1",1,0,1,0.01),_*hslider("output2",1,0,1,0.01)) ;
 
-varNoise = no.noise*0.5  + (no.noise*no.lfnoise0(60 *rainIntensity))*0.400 ;
+varNoise = no.noise*0.5  + (no.noise*no.lfnoise0(30 + 60 * rainIntensity))*0.400 ;
 
-rndFilter = fi.lowpass(3,500 + 4000 *rainIntensity + pow(2,rainIntensity*11) + abs(no.noise)*100 *rainIntensity) : fi.highpass(3,500);
+pinkVarNoise = no.pink_noise*0.5  + (no.noise*no.lfnoise0(30 + 60 * rainIntensity))*0.400 ;
 
-lowRndFilter = fi.lowpass(3,500 + 4000 *rainIntensity + pow(2,rainIntensity*11) + abs(no.noise)*100 *rainIntensity) : fi.highpass(3,500) ;
+rndFilter = fi.lowpass(3,500 + 6000 *rainIntensity ): fi.highpass(3,500);
+
+lowRndFilter = fi.lowpass(3,500 + 6000 *rainIntensity ) : fi.highpass(3,500) ;
 
 oneVocoderBand(band,bandsNumb,bwRatio,bandGain,x) = x : fi.resonbp(bandFreq,bandQ,bandGain) with {
         bandFreq = 200+pow(2,(band+1)*0.3);
         BW = (bandFreq - 80+pow(2,(band+1)*0.5))*bwRatio;
         bandQ = bandFreq/BW;
-};
+}; 
 
 vocoder(nBands,att,rel,BWRatio,source,excitation) = source <: par(i,nBands,oneVocoderBand(i,nBands,BWRatio,1) :
 	an.amp_follower_ar(att,rel) : _,excitation : oneVocoderBand(i,nBands,BWRatio)) :> _ ;
 
 boil = varNoise : vocoder(30,0.001,0.001,0.5,no.noise) : rndFilter *0.6 ;
 
-lowBoil = no.pink_noise : vocoder(23,0.001,0.001,0.5,no.pink_noise) : lowRndFilter *0.5;
+lowBoil = pinkVarNoise : vocoder(23,0.001,0.001,0.5,no.pink_noise) : lowRndFilter *0.5;
 
-base = no.pink_noise: fi.lowpass(3,4000 + 6000*rainIntensity)*0.5 * rainIntensity;
-
+base = no.pink_noise: fi.lowpass(3,4000 + 6000*rainIntensity)*0.3 * rainIntensity;
 
 process = (base + boil + lowBoil :* (rainIntensity*0.5+0.5)   <: (_,_)), drop_control  :>  _,_ ;
